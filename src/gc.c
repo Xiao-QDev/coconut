@@ -37,6 +37,7 @@ void gc_collect(void) {
                 free(t->argv);
             } else if (unreached->type == OBJ_CORO) {
                 ObjCoro *coro = (ObjCoro*)unreached;
+                (void)coro;
 #ifdef _WIN32
                 if (coro->fiber) DeleteFiber(coro->fiber);
 #endif

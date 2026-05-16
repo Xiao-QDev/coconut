@@ -694,7 +694,7 @@ Value interp_run_file(const char *filename) {
     long size = ftell(f);
     rewind(f);
     char *buf = malloc(size + 1);
-    fread(buf, 1, size, f);
+    if (fread(buf, 1, size, f) != (size_t)size && size > 0) {}
     buf[size] = '\0';
     fclose(f);
     Value res = interp_run_string(buf, filename);
