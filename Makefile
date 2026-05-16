@@ -1,5 +1,5 @@
 CC      = gcc
-CFLAGS  = -std=c11 -Wall -Wextra -O2 -Isrc
+CFLAGS  = -std=c11 -Wall -Wextra -O2 -Isrc -DPICO_RUNTIME_DIR=\"src\"
 LDFLAGS = -lm -lpthread -lws2_32
 SRC     = $(wildcard src/*.c src/stdlib/*.c)
 TARGET  = pico
