@@ -18,7 +18,7 @@ jobs:
       
     - name: Build
       run: |
-        gcc -std=c11 -Wall -Wextra -O2 -Isrc src/*.c src/stdlib/*.c -lm -lpthread -o pico
+        gcc -std=c11 -Wall -Wextra -O2 -Isrc -DPICO_RUNTIME_DIR=\"src\" src/*.c src/stdlib/*.c -lm -lpthread -o pico
       
     - name: Test
       run: ./pico examples/hello.pico
@@ -44,7 +44,7 @@ jobs:
     - name: Build
       shell: msys2 {0}
       run: |
-        gcc -std=c11 -Wall -Wextra -O2 -Isrc src/*.c src/stdlib/*.c -lm -lpthread -lws2_32 -o pico.exe
+        gcc -std=c11 -Wall -Wextra -O2 -Isrc -DPICO_RUNTIME_DIR=\"src\" src/*.c src/stdlib/*.c -lm -lpthread -lws2_32 -o pico.exe
       
     - name: Test
       shell: msys2 {0}
@@ -61,7 +61,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: gcc -std=c11 -Wall -Wextra -O2 -Isrc src/*.c src/stdlib/*.c -lm -lpthread -o pico
+      run: gcc -std=c11 -Wall -Wextra -O2 -Isrc -DPICO_RUNTIME_DIR=\"src\" src/*.c src/stdlib/*.c -lm -lpthread -o pico
     - name: Test
       run: ./pico examples/hello.pico
     - name: Upload Artifact

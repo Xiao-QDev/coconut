@@ -18,12 +18,14 @@ extern void  qt_app_init(void);
 #endif
 
 /* Widget handle: store pointer as VAL_INT */
+#ifdef QT_AVAILABLE
 static Value wrap_widget(void *ptr) {
     return VAL_INT_V((int64_t)(uintptr_t)ptr);
 }
 static void *unwrap_widget(Value v) {
     return (void*)(uintptr_t)v.integer;
 }
+#endif
 
 Value qt_app_new(int argc, Value *argv) {
     (void)argc; (void)argv;
