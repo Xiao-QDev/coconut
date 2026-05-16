@@ -694,11 +694,23 @@ void interp_register_stdlib(Interpreter *vm) {
 
     // 界面模块
     ObjMap *ui = map_new();
-    map_set(ui, str_intern("window", 6), VAL_NATIVE_V(qt_window_new));
-    map_set(ui, str_intern("窗口", 6), VAL_NATIVE_V(qt_window_new));
-    map_set(ui, str_intern("button", 6), VAL_NATIVE_V(qt_button_new));
-    map_set(ui, str_intern("按钮", 6), VAL_NATIVE_V(qt_button_new));
-    env_set(vm->globals, str_intern("ui", 2), VAL_MAP_V(ui));
+    map_set(ui, str_intern("window",   6),  VAL_NATIVE_V(qt_window_new));
+    map_set(ui, str_intern("窗口",     6),  VAL_NATIVE_V(qt_window_new));
+    map_set(ui, str_intern("button",   6),  VAL_NATIVE_V(qt_button_new));
+    map_set(ui, str_intern("按钮",     6),  VAL_NATIVE_V(qt_button_new));
+    map_set(ui, str_intern("label",    5),  VAL_NATIVE_V(qt_label_new));
+    map_set(ui, str_intern("标签",     6),  VAL_NATIVE_V(qt_label_new));
+    map_set(ui, str_intern("input",    5),  VAL_NATIVE_V(qt_input_new));
+    map_set(ui, str_intern("输入框",   9),  VAL_NATIVE_V(qt_input_new));
+    map_set(ui, str_intern("show",     4),  VAL_NATIVE_V(qt_widget_show));
+    map_set(ui, str_intern("显示",     6),  VAL_NATIVE_V(qt_widget_show));
+    map_set(ui, str_intern("add",      3),  VAL_NATIVE_V(qt_widget_add));
+    map_set(ui, str_intern("添加",     6),  VAL_NATIVE_V(qt_widget_add));
+    map_set(ui, str_intern("on_click", 8),  VAL_NATIVE_V(qt_widget_on_click));
+    map_set(ui, str_intern("点击时",   9),  VAL_NATIVE_V(qt_widget_on_click));
+    map_set(ui, str_intern("exec",     4),  VAL_NATIVE_V(qt_app_exec));
+    map_set(ui, str_intern("运行",     6),  VAL_NATIVE_V(qt_app_exec));
+    env_set(vm->globals, str_intern("ui", 2),   VAL_MAP_V(ui));
     env_set(vm->globals, str_intern("界面", 6), VAL_MAP_V(ui));
 }
 
