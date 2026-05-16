@@ -97,18 +97,19 @@ jobs:
 
     - name: Prepare release files
       run: |
-        mv ./release/linux/pico  ./release/pico-linux
-        mv ./release/windows/pico.exe ./release/pico-windows.exe
-        mv ./release/macos/pico  ./release/pico-macos
-        chmod +x ./release/pico-linux ./release/pico-macos
+        VER=${{ github.ref_name }}
+        mv ./release/linux/pico        ./release/pico-linux-${VER}
+        mv ./release/windows/pico.exe  ./release/pico-windows-${VER}.exe
+        mv ./release/macos/pico        ./release/pico-macos-${VER}
+        chmod +x ./release/pico-linux-${VER} ./release/pico-macos-${VER}
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          ./release/pico-linux
-          ./release/pico-windows.exe
-          ./release/pico-macos
+          ./release/pico-linux-${{ github.ref_name }}
+          ./release/pico-windows-${{ github.ref_name }}.exe
+          ./release/pico-macos-${{ github.ref_name }}
         draft: false
         prerelease: false
       env:
