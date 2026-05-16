@@ -18,8 +18,8 @@ Pico 是用 C 实现的通用编程语言，伪代码风格语法，中英文关
 > [!WARNING]
 > WASM 构建仅支持核心语言特性（运算、控制流、结构体、闭包）。线程、协程、网络、Qt GUI 均为 stub，调用无效果。
 - **Qt GUI**：`ui.window` / `ui.button` / `ui.label` / `ui.input`（需 Qt 环境）
-  > [!WARNING]
-  > Qt 绑定需编译时加 `-DQT_AVAILABLE` 并链接 Qt 库。未启用时所有 `ui.*` 调用返回 nil。
+> [!WARNING]
+> Qt 绑定需编译时加 `-DQT_AVAILABLE` 并链接 Qt 库。未启用时所有 `ui.*` 调用返回 nil。
 - **类型系统**：可选静态标注 `let x: int = 5`，`fn f(x: int) -> str:`，`--strict` 模式启用运行时检查
 - **包管理器**：`pico install owner/repo[@tag]`，`pico remove pkg`，`pico list`，包存 `pico_modules/`
 - **标准库**：IO、字符串、列表、字典、数学、文件、HTTP 服务器、JSON
