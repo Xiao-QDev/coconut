@@ -5,6 +5,13 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifdef __EMSCRIPTEN__
+/* Forward decl — defined in wasm_entry.c */
+int pico_printf(const char *fmt, ...);
+#undef  printf
+#define printf pico_printf
+#endif
+
 Obj   *gc_objects       = NULL;
 size_t gc_bytes_allocated = 0;
 size_t gc_next_gc       = 1024 * 1024;
