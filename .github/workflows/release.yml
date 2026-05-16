@@ -80,7 +80,7 @@ jobs:
       run: |
         emcc -std=c11 -O2 -Isrc \
           src/ast.c src/error.c src/gc.c src/interpreter.c src/lexer.c \
-          src/parser.c src/value.c src/wasm_entry.c src/stdlib/json.c \
+          src/parser.c src/value.c src/wasm_entry.c src/wasm_stubs.c src/stdlib/json.c \
           -s WASM=1 \
           -s EXPORTED_FUNCTIONS='["_pico_wasm_run","_malloc","_free"]' \
           -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]' \
