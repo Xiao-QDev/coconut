@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#define _POSIX_C_SOURCE 200809L
 #include "interpreter.h"
 #include "lexer.h"
 #include "parser.h"

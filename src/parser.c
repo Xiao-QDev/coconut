@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "parser.h"
 #include "error.h"
 #include <string.h>
@@ -56,6 +57,7 @@ static void skip_newlines(Parser *p) {
 static AstNode *parse_expr(Parser *p);
 static AstNode *parse_stmt(Parser *p);
 static AstNode *parse_block(Parser *p);
+static bool block_contains_yield(AstNode *node);
 
 // ── 工具 ─────────────────────────────────────────────────────
 static char *tok_str(Parser *p, Token t) {

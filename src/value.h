@@ -1,6 +1,20 @@
 #pragma once
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
+
+// ── 向前声明 ──────────────────────────────────────────────────
+typedef struct ObjStr ObjStr;
+typedef struct ObjList ObjList;
+typedef struct ObjMap ObjMap;
+typedef struct ObjStructDef ObjStructDef;
+typedef struct ObjInstance ObjInstance;
+typedef struct ObjFn ObjFn;
+typedef struct ObjCoro ObjCoro;
+typedef struct ObjThread ObjThread;
+typedef struct ObjMutex ObjMutex;
+typedef struct ObjChannel ObjChannel;
+typedef struct Env Env;
 
 // ── GC 对象头（所有堆对象共享）──────────────────────────────
 typedef enum {
@@ -43,8 +57,8 @@ struct Value {
         NativeFn    native;
         ObjCoro    *coro;
         ObjThread  *thread;
-        void       *mutex;   // pointer to ObjMutex
-        void       *channel; // pointer to ObjChannel
+        ObjMutex   *mutex;
+        ObjChannel *channel;
     };
 };
 

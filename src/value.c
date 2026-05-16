@@ -1,4 +1,5 @@
 #include "value.h"
+#include "interpreter.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -113,6 +114,18 @@ bool map_get(ObjMap *m, ObjStr *key, Value *out) {
     return false;
 }
 
+bool map_del(ObjMap *m, ObjStr *key) {
+    for (int i = 0; i < m->len; i++) {
+        if (m->keys[i] == key) {
+            m->keys[i] = m->keys[m->len-1];
+            m->vals[i] = m->vals[m->len-1];
+            m->len--;
+            return true;
+        }
+    }
+    return false;
+}
+
 ObjStructDef *struct_def_new(ObjStr *name, int field_count) {
     ObjStructDef *d = gc_alloc(sizeof(ObjStructDef));
     d->hdr.type = OBJ_STRUCT_DEF;
@@ -136,49 +149,6 @@ ObjInstance *instance_new(ObjStructDef *def) {
     return i;
 }
 
-
-// ── 字典 ─────────────────────────────────────────────────────
-ObjMap *map_new(void) {
-    ObjMap *m = gc_alloc(sizeof(ObjMap));
-    m->hdr.type = OBJ_MAP;
-    m->keys = NULL; m->vals = NULL; m->len = 0; m->cap = 0;
-    m->hdr.next = gc_objects; gc_objects = (Obj*)m;
-    return m;
-}
-
-void map_set(ObjMap *m, ObjStr *key, Value val) {
-    for (int i = 0; i < m->len; i++) {
-        if (m->keys[i] == key) { m->vals[i] = val; return; }
-    }
-    if (m->len >= m->cap) {
-        int nc = m->cap ? m->cap * 2 : 4;
-        m->keys = realloc(m->keys, nc * sizeof(ObjStr*));
-        m->vals = realloc(m->vals, nc * sizeof(Value));
-        m->cap = nc;
-    }
-    m->keys[m->len] = key;
-    m->vals[m->len] = val;
-    m->len++;
-}
-
-bool map_get(ObjMap *m, ObjStr *key, Value *out) {
-    for (int i = 0; i < m->len; i++) {
-        if (m->keys[i] == key) { *out = m->vals[i]; return true; }
-    }
-    return false;
-}
-
-bool map_del(ObjMap *m, ObjStr *key) {
-    for (int i = 0; i < m->len; i++) {
-        if (m->keys[i] == key) {
-            m->keys[i] = m->keys[m->len-1];
-            m->vals[i] = m->vals[m->len-1];
-            m->len--;
-            return true;
-        }
-    }
-    return false;
-}
 
 // ── 打印 ─────────────────────────────────────────────────────
 void value_print(Value v) {

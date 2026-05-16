@@ -1,7 +1,9 @@
+#define _POSIX_C_SOURCE 200809L
 #include "error.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 static bool use_color(void) { return isatty(fileno(stderr)); }

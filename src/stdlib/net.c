@@ -1,21 +1,36 @@
 #include "net.h"
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <netdb.h>
+typedef int SOCKET;
+#define INVALID_SOCKET -1
+#define closesocket close
+#endif
 #include <stdio.h>
 #include <string.h>
 #include "../interpreter.h"
 
+#ifdef _WIN32
 #pragma comment(lib, "ws2_32.lib")
+#endif
 
 static bool ws_initialized = false;
 
 void net_init() {
     if (ws_initialized) return;
+#ifdef _WIN32
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
         fprintf(stderr, "WSAStartup 失败\n");
         return;
     }
+#endif
     ws_initialized = true;
 }
 

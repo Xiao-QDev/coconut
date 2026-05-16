@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "gc.h"
 #include "value.h"
 #include "thread.h"
@@ -6,6 +7,7 @@
 #include <windows.h>
 #endif
 #include <stdlib.h>
+#include <pthread.h>
 
 void gc_collect(void) {
     gc_mark_roots();

@@ -16,7 +16,7 @@ static void gen_block(FILE *out, AstNode *node) {
 static void gen_node(FILE *out, AstNode *node) {
     if (!node) return;
     switch (node->type) {
-        case NODE_INT:    fprintf(out, "pico_int(%lld)", node->ival); break;
+        case NODE_INT:    fprintf(out, "pico_int(%lld)", (long long)node->ival); break;
         case NODE_FLOAT:  fprintf(out, "pico_float(%g)", node->fval); break;
         case NODE_STRING: fprintf(out, "pico_str(\"%.*s\")", node->sval.len, node->sval.s); break;
         case NODE_IDENT:  fprintf(out, "%s", node->sval.s); break;
@@ -24,14 +24,14 @@ static void gen_node(FILE *out, AstNode *node) {
         case NODE_BINOP:
             fprintf(out, "(");
             gen_node(out, node->binop.left);
-            fprintf(out, " %.*s ", node->binop.op.len, node->binop.op.start);
+            fprintf(out, " %s ", token_type_name(node->binop.op));
             gen_node(out, node->binop.right);
             fprintf(out, ")");
             break;
 
         case NODE_LET:
             fprintf(out, "PicoValue %s = ", node->let.name);
-            gen_node(out, node->let.init);
+            gen_node(out, node->let.value);
             break;
 
         case NODE_IF:
