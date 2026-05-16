@@ -29,6 +29,8 @@ typedef struct {
     // 错误
     bool        has_error;
     char        error_msg[256];
+    // 类型系统
+    bool        strict_types;  // --strict 模式启用运行时类型检查
 } Interpreter;
 
 void  interp_init(Interpreter *vm);

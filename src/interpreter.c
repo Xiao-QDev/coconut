@@ -111,6 +111,18 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
     case NODE_LET: {
         Value v = node->let.value ? interp_exec(vm, node->let.value, env) : VAL_NIL_V;
         if (vm->has_error) return VAL_NIL_V;
+        // 可选类型检查（--strict 模式或 type_ann 存在时）
+        if (node->let.type_ann && vm->strict_types) {
+            const char *t = node->let.type_ann;
+            bool ok = true;
+            if      (strcmp(t,"int")==0||strcmp(t,"整数")==0)   ok = IS_INT(v);
+            else if (strcmp(t,"float")==0||strcmp(t,"浮点")==0) ok = IS_FLOAT(v)||IS_INT(v);
+            else if (strcmp(t,"str")==0||strcmp(t,"字符串")==0) ok = IS_STR(v);
+            else if (strcmp(t,"bool")==0||strcmp(t,"布尔")==0)  ok = IS_BOOL(v);
+            else if (strcmp(t,"list")==0||strcmp(t,"列表")==0)  ok = IS_LIST(v);
+            else if (strcmp(t,"map")==0||strcmp(t,"字典")==0)   ok = IS_MAP(v);
+            if (!ok) { set_error(vm, "类型错误：'%s' 期望 %s", node->let.name, t); return VAL_NIL_V; }
+        }
         ObjStr *key = str_intern(node->let.name, (int)strlen(node->let.name));
         env_set(env, key, v);
         return VAL_NIL_V;
@@ -636,7 +648,8 @@ static Value native_print(int argc, Value *argv) {
 
 void interp_init(Interpreter *vm) {
     memset(vm, 0, sizeof(Interpreter));
-    vm->globals = env_new(NULL);
+    vm->globals      = env_new(NULL);
+    vm->strict_types = getenv("PICO_STRICT") != NULL;
     current_vm = vm;
     interp_register_stdlib(vm);
 }

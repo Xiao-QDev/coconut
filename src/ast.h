@@ -50,7 +50,7 @@ struct AstNode {
         struct { NodeList parts; }    fstr;   // FSTRING: alternating str/expr
         struct { AstNode *left; AstNode *right; PicoTokenType op; } binop;
         struct { AstNode *operand; PicoTokenType op; }              unop;
-        struct { char *name; AstNode *value; }                  let;
+        struct { char *name; char *type_ann; AstNode *value; } let;
         struct { char *name; AstNode *value; PicoTokenType op; }    assign;
         struct { NodeList elements; }                           list;
         struct { NodeList keys; NodeList vals; }                map;
@@ -72,6 +72,8 @@ struct AstNode {
         struct {
             char    *name;
             char   **params;
+            char   **param_types;  // 可选参数类型标注
+            char    *return_type;  // 可选返回类型标注
             int      param_count;
             AstNode *body;
             bool     is_generator;

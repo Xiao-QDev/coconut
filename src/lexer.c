@@ -288,6 +288,7 @@ retry:
         case '+': if(cur(l)=='='){advance(l);return(Token){TOK_PLUS_ASSIGN, l->src+start,2,line,col};}
                   return (Token){TOK_PLUS,    l->src+start,1,line,col};
         case '-': if(cur(l)=='='){advance(l);return(Token){TOK_MINUS_ASSIGN,l->src+start,2,line,col};}
+                  if(cur(l)=='>'){advance(l);return(Token){TOK_THIN_ARROW,  l->src+start,2,line,col};}
                   return (Token){TOK_MINUS,   l->src+start,1,line,col};
         case '*': return (Token){TOK_STAR,    l->src+start,1,line,col};
         case '/': return (Token){TOK_SLASH,   l->src+start,1,line,col};

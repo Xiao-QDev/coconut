@@ -387,18 +387,34 @@ static bool block_contains_yield(AstNode *node) {
 
 static AstNode *parse_fn(Parser *p, bool is_async) {
     AstNode *n = new_node(p, NODE_FN);
-    advance(p);  // skip fn/函数
-    if (check(p, TOK_IDENT)) {
-        n->fn.name = tok_str(p, p->cur);
-        advance(p);
+    advance(p);
+    if (check(p, TOK_IDENT)) { n->fn.name = tok_str(p, p->cur); advance(p); }
+    // parse params with optional type annotations: (x: int, y: str)
+    expect(p, TOK_LPAREN);
+    char **params = NULL; char **ptypes = NULL; int pc = 0;
+    while (!check(p, TOK_RPAREN) && !check(p, TOK_EOF)) {
+        Token pname = expect(p, TOK_IDENT);
+        params = arena_alloc(p->arena, (pc+1)*sizeof(char*));
+        ptypes = arena_alloc(p->arena, (pc+1)*sizeof(char*));
+        // copy previous
+        if (pc > 0) {
+            memcpy(params, n->fn.params,       pc*sizeof(char*));
+            memcpy(ptypes, n->fn.param_types,  pc*sizeof(char*));
+        }
+        params[pc] = tok_str(p, pname);
+        ptypes[pc] = NULL;
+        if (check(p, TOK_COLON)) { advance(p); ptypes[pc] = tok_str(p, p->cur); advance(p); }
+        n->fn.params       = params;
+        n->fn.param_types  = ptypes;
+        pc++;
+        if (!match(p, TOK_COMMA)) break;
     }
-    parse_params(p, &n->fn.params, &n->fn.param_count);
-    n->fn.is_async = is_async;
-    // 可选返回类型标注
-    if (check(p, TOK_COLON) && p->peek.type != TOK_INDENT &&
-        p->peek.type != TOK_LBRACE && p->peek.type != TOK_BEGIN) {
-        advance(p); advance(p);  // skip ': type'
-    }
+    expect(p, TOK_RPAREN);
+    n->fn.param_count = pc;
+    n->fn.is_async    = is_async;
+    n->fn.return_type = NULL;
+    // optional return type: -> type
+    if (check(p, TOK_THIN_ARROW)) { advance(p); n->fn.return_type = tok_str(p, p->cur); advance(p); }
     if (check(p, TOK_COLON) || check(p, TOK_LBRACE) || check(p, TOK_BEGIN)) {
         n->fn.body = parse_block(p);
         n->fn.is_generator = block_contains_yield(n->fn.body);
@@ -565,9 +581,13 @@ static AstNode *parse_stmt(Parser *p) {
             AstNode *n = new_node(p, NODE_LET);
             advance(p);
             Token name = expect(p, TOK_IDENT);
-            n->let.name = tok_str(p, name);
-            // 可选类型标注
-            if (check(p, TOK_COLON)) { advance(p); advance(p); }
+            n->let.name     = tok_str(p, name);
+            n->let.type_ann = NULL;
+            if (check(p, TOK_COLON)) {
+                advance(p);
+                n->let.type_ann = tok_str(p, p->cur);
+                advance(p);
+            }
             expect(p, TOK_ASSIGN);
             n->let.value = parse_expr(p);
             return n;
