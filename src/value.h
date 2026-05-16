@@ -3,34 +3,26 @@
 #include <stdbool.h>
 
 // ── GC 对象头（所有堆对象共享）──────────────────────────────
+typedef enum {
+    OBJ_STRING, OBJ_LIST, OBJ_MAP, OBJ_STRUCT_DEF,
+    OBJ_INSTANCE, OBJ_FN, OBJ_CORO, OBJ_THREAD,
+    OBJ_MUTEX, OBJ_CHANNEL, OBJ_UPVALUE
+} ObjType;
+
 typedef struct Obj {
-    uint8_t     type;   // ObjType
+    uint8_t     type;  
     bool        marked;
     struct Obj *next;
 } Obj;
 
-typedef enum {
-    OBJ_STRING, OBJ_LIST, OBJ_MAP, OBJ_STRUCT_DEF,
-    OBJ_INSTANCE, OBJ_FN, OBJ_NATIVE, OBJ_UPVALUE,
-    OBJ_COROUTINE, OBJ_THREAD
-} ObjType;
+typedef struct ObjCoro ObjCoro;
 
-// ── 前向声明 ────────────────────────────────────────────────
-typedef struct ObjStr      ObjStr;
-typedef struct ObjList     ObjList;
-typedef struct ObjMap      ObjMap;
-typedef struct ObjFn       ObjFn;
-typedef struct ObjInstance ObjInstance;
-typedef struct ObjCoro     ObjCoro;
-typedef struct ObjThread   ObjThread;
-typedef struct Env         Env;
-
-// ── Value ───────────────────────────────────────────────────
 typedef enum {
     VAL_NIL, VAL_BOOL, VAL_INT, VAL_FLOAT,
+
     VAL_STRING, VAL_LIST, VAL_MAP,
     VAL_STRUCT_DEF, VAL_INSTANCE, VAL_FN, VAL_NATIVE,
-    VAL_COROUTINE, VAL_THREAD
+    VAL_COROUTINE, VAL_THREAD, VAL_MUTEX, VAL_CHANNEL
 } ValueType;
 
 typedef struct Value Value;
@@ -51,6 +43,8 @@ struct Value {
         NativeFn    native;
         ObjCoro    *coro;
         ObjThread  *thread;
+        void       *mutex;   // pointer to ObjMutex
+        void       *channel; // pointer to ObjChannel
     };
 };
 
@@ -146,6 +140,7 @@ extern size_t gc_next_gc;
 void *gc_alloc(size_t size);
 void  gc_collect(void);
 void  gc_mark_value(Value v);
+void  gc_mark_env(Env *e);
 void  gc_mark_roots(void);
 
 // ── 字符串驻留 ───────────────────────────────────────────────

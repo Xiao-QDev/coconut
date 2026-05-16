@@ -7,17 +7,16 @@
 #include "parser.h"
 #include "error.h"
 #include "thread.h"
+#include "coroutine.h"
+#include "stdlib/net.h"
+
+#include "stdlib/qt_bind.h"
 
 static Interpreter *current_vm = NULL;
 
 void gc_mark_roots(void) {
     if (!current_vm) return;
-    Env *e = current_vm->globals;
-    while (e) {
-        for (int i = 0; i < e->count; i++)
-            gc_mark_value(e->vals[i]);
-        e = e->parent;
-    }
+    gc_mark_env(current_vm->globals);
 }
 
 Env *env_new(Env *parent) {
@@ -119,16 +118,53 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
     case NODE_ASSIGN: {
         Value v = interp_exec(vm, node->assign.value, env);
         if (vm->has_error) return VAL_NIL_V;
-        ObjStr *key = str_intern(node->assign.name, (int)strlen(node->assign.name));
-        if (node->assign.op == TOK_PLUS_ASSIGN || node->assign.op == TOK_MINUS_ASSIGN) {
-            Value cur;
-            if (!env_get(env, key, &cur)) { set_error(vm, "undefined '%s'", node->assign.name); return VAL_NIL_V; }
-            if (IS_INT(cur) && IS_INT(v))
-                v = VAL_INT_V(node->assign.op == TOK_PLUS_ASSIGN ? cur.integer + v.integer : cur.integer - v.integer);
-            else
-                v = VAL_FLOAT_V(node->assign.op == TOK_PLUS_ASSIGN ? to_float(cur) + to_float(v) : to_float(cur) - to_float(v));
+        if (node->assign.name) {
+            ObjStr *key = str_intern(node->assign.name, (int)strlen(node->assign.name));
+            if (node->assign.op == TOK_PLUS_ASSIGN || node->assign.op == TOK_MINUS_ASSIGN) {
+                Value cur;
+                if (!env_get(env, key, &cur)) { set_error(vm, "undefined '%s'", node->assign.name); return VAL_NIL_V; }
+                if (IS_INT(cur) && IS_INT(v))
+                    v = VAL_INT_V(node->assign.op == TOK_PLUS_ASSIGN ? cur.integer + v.integer : cur.integer - v.integer);
+                else
+                    v = VAL_FLOAT_V(node->assign.op == TOK_PLUS_ASSIGN ? to_float(cur) + to_float(v) : to_float(cur) - to_float(v));
+            }
+            if (!env_assign(env, key, v)) env_set(env, key, v);
+        } else {
+            AstNode *left = node->binop.left;
+            if (left->type == NODE_FIELD_ACCESS) {
+                Value obj = interp_exec(vm, left->field.obj, env);
+                if (obj.type != VAL_INSTANCE) { set_error(vm, "not an instance"); return VAL_NIL_V; }
+                ObjInstance *inst = obj.instance;
+                ObjStr *field = str_intern(left->field.field, (int)strlen(left->field.field));
+                bool found = false;
+                for (int i = 0; i < inst->def->field_count; i++) {
+                    if (inst->def->fields[i].name == field) {
+                        if (node->assign.op == TOK_PLUS_ASSIGN || node->assign.op == TOK_MINUS_ASSIGN) {
+                            Value cur = inst->fields[i];
+                            if (IS_INT(cur) && IS_INT(v))
+                                v = VAL_INT_V(node->assign.op == TOK_PLUS_ASSIGN ? cur.integer + v.integer : cur.integer - v.integer);
+                            else
+                                v = VAL_FLOAT_V(node->assign.op == TOK_PLUS_ASSIGN ? to_float(cur) + to_float(v) : to_float(cur) - to_float(v));
+                        }
+                        inst->fields[i] = v;
+                        found = true; break;
+                    }
+                }
+                if (!found) set_error(vm, "no field '%s'", field->data);
+            } else if (left->type == NODE_INDEX) {
+                Value obj = interp_exec(vm, left->index.obj, env);
+                Value idx = interp_exec(vm, left->index.idx, env);
+                if (IS_LIST(obj)) {
+                    if (!IS_INT(idx)) { set_error(vm, "index must be int"); return VAL_NIL_V; }
+                    int i = (int)idx.integer;
+                    if (i < 0 || i >= obj.list->len) { set_error(vm, "out of bounds"); return VAL_NIL_V; }
+                    obj.list->items[i] = v;
+                } else if (IS_MAP(obj)) {
+                    if (!IS_STR(idx)) { set_error(vm, "map index must be string"); return VAL_NIL_V; }
+                    map_set(obj.map, idx.string, v);
+                }
+            }
         }
-        if (!env_assign(env, key, v)) env_set(env, key, v);
         return VAL_NIL_V;
     }
 
@@ -241,6 +277,17 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
                 if (vm->breaking) { vm->breaking = false; break; }
                 if (vm->continuing) vm->continuing = false;
             }
+        } else if (iter.type == VAL_COROUTINE) {
+            ObjCoro *coro = iter.coro;
+            while (!coro->is_done) {
+                Value val = coro_resume(coro, VAL_NIL_V);
+                if (coro->is_done) break;
+                env_set(loop_env, var, val);
+                interp_exec(vm, node->fornode.body, loop_env);
+                if (vm->has_error || vm->returning) break;
+                if (vm->breaking) { vm->breaking = false; break; }
+                if (vm->continuing) vm->continuing = false;
+            }
         } else {
             set_error(vm, "for: not iterable");
         }
@@ -289,10 +336,14 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
                 ObjStr *pname = str_intern(fn->params[i], (int)strlen(fn->params[i]));
                 env_set(call_env, pname, argv[i]);
             }
-            result = interp_exec(vm, fn->body, call_env);
-            if (vm->returning) {
-                result = vm->return_val;
-                vm->returning = false;
+            if (fn->is_generator) {
+                result = coro_new(fn, call_env);
+            } else {
+                result = interp_exec(vm, fn->body, call_env);
+                if (vm->returning) {
+                    result = vm->return_val;
+                    vm->returning = false;
+                }
             }
             env_free(call_env);
         } else {
@@ -306,6 +357,12 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
         Value v = node->retnode.value ? interp_exec(vm, node->retnode.value, env) : VAL_NIL_V;
         vm->returning = true;
         vm->return_val = v;
+        return v;
+    }
+
+    case NODE_YIELD: {
+        Value v = node->yieldnode.value ? interp_exec(vm, node->yieldnode.value, env) : VAL_NIL_V;
+        coro_yield(v);
         return v;
     }
 
@@ -337,7 +394,13 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
         if (vm->has_error) return VAL_NIL_V;
         bool matched = false;
         for (int i = 0; i < node->matchnode.patterns.count; i++) {
-            Value pat = interp_exec(vm, node->matchnode.patterns.items[i], env);
+            AstNode *pat_node = node->matchnode.patterns.items[i];
+            // 特殊处理 "_" (通配符)
+            if (pat_node->type == NODE_IDENT && strcmp(pat_node->sval.s, "_") == 0) {
+                interp_exec(vm, node->matchnode.bodies.items[i], env);
+                matched = true; break;
+            }
+            Value pat = interp_exec(vm, pat_node, env);
             if (value_equal(subject, pat)) {
                 interp_exec(vm, node->matchnode.bodies.items[i], env);
                 matched = true; break;
@@ -423,7 +486,93 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
                 return thread_join(obj.thread);
             }
         }
+        if (obj.type == VAL_MUTEX) {
+            ObjMutex *m = (ObjMutex*)obj.mutex;
+            if (strcmp(node->mcall.method, "lock") == 0 || strcmp(node->mcall.method, "锁定") == 0) {
+                mutex_lock(m); return VAL_NIL_V;
+            }
+            if (strcmp(node->mcall.method, "unlock") == 0 || strcmp(node->mcall.method, "解锁") == 0) {
+                mutex_unlock(m); return VAL_NIL_V;
+            }
+        }
+        if (obj.type == VAL_CHANNEL) {
+            ObjChannel *c = (ObjChannel*)obj.channel;
+            if (strcmp(node->mcall.method, "send") == 0 || strcmp(node->mcall.method, "发送") == 0) {
+                Value val = interp_exec(vm, node->mcall.args.items[0], env);
+                channel_send(c, val); return VAL_NIL_V;
+            }
+            if (strcmp(node->mcall.method, "recv") == 0 || strcmp(node->mcall.method, "接收") == 0) {
+                return channel_recv(c);
+            }
+        }
+        if (obj.type == VAL_INSTANCE) {
+            ObjInstance *inst = obj.instance;
+            ObjStr *mname = str_intern(node->mcall.method, (int)strlen(node->mcall.method));
+            Value m;
+            if (map_get(inst->def->methods, mname, &m)) {
+                int argc = node->mcall.args.count;
+                Value *argv = argc ? malloc(sizeof(Value) * argc) : NULL;
+                for (int i = 0; i < argc; i++) argv[i] = interp_exec(vm, node->mcall.args.items[i], env);
+                ObjFn *fn = m.fn;
+                Env *call_env = env_new(fn->closure);
+                env_set(call_env, str_intern("self", 4), obj);
+                env_set(call_env, str_intern("自身", 6), obj);
+                for (int i = 0; i < fn->arity && i < argc; i++) {
+                    env_set(call_env, str_intern(fn->params[i], (int)strlen(fn->params[i])), argv[i]);
+                }
+                Value res = interp_exec(vm, fn->body, call_env);
+                if (vm->returning) { res = vm->return_val; vm->returning = false; }
+                env_free(call_env); free(argv);
+                return res;
+            }
+        }
         set_error(vm, "unknown method '%s'", node->mcall.method);
+        return VAL_NIL_V;
+    }
+
+    case NODE_STRUCT_DEF: {
+        ObjStr *name = str_intern(node->structdef.name, (int)strlen(node->structdef.name));
+        ObjStructDef *def = struct_def_new(name, node->structdef.field_count);
+        for (int i = 0; i < node->structdef.field_count; i++) {
+            def->fields[i].name = str_intern(node->structdef.field_names[i], (int)strlen(node->structdef.field_names[i]));
+            def->fields[i].index = i;
+        }
+        for (int i = 0; i < node->structdef.methods.count; i++) {
+            Value fn = interp_exec(vm, node->structdef.methods.items[i], env);
+            map_set(def->methods, fn.fn->name, fn);
+        }
+        env_set(env, name, VAL_STRUCT_DEF_V(def));
+        return VAL_NIL_V;
+    }
+
+    case NODE_STRUCT_LIT: {
+        Value v;
+        ObjStr *name = str_intern(node->structlit.name, (int)strlen(node->structlit.name));
+        if (!env_get(env, name, &v) || v.type != VAL_STRUCT_DEF) { set_error(vm, "not a struct"); return VAL_NIL_V; }
+        ObjStructDef *def = v.structdef;
+        ObjInstance *inst = instance_new(def);
+        for (int i = 0; i < node->structlit.keys.count; i++) {
+            ObjStr *key = str_intern(node->structlit.keys.items[i]->sval.s, node->structlit.keys.items[i]->sval.len);
+            Value val = interp_exec(vm, node->structlit.vals.items[i], env);
+            for (int j = 0; j < def->field_count; j++) {
+                if (def->fields[j].name == key) { inst->fields[j] = val; break; }
+            }
+        }
+        return VAL_INST_V(inst);
+    }
+
+    case NODE_FIELD_ACCESS: {
+        Value obj = interp_exec(vm, node->field.obj, env);
+        if (vm->has_error) return VAL_NIL_V;
+        if (obj.type != VAL_INSTANCE) { set_error(vm, "not an instance"); return VAL_NIL_V; }
+        ObjInstance *inst = obj.instance;
+        ObjStr *field = str_intern(node->field.field, (int)strlen(node->field.field));
+        for (int i = 0; i < inst->def->field_count; i++) {
+            if (inst->def->fields[i].name == field) return inst->fields[i];
+        }
+        Value m;
+        if (map_get(inst->def->methods, field, &m)) return m;
+        set_error(vm, "no field '%s'", field->data);
         return VAL_NIL_V;
     }
 
@@ -448,9 +597,65 @@ void interp_init(Interpreter *vm) {
     interp_register_stdlib(vm);
 }
 
+Interpreter *interp_get_current() {
+    return current_vm;
+}
+
+static Value native_range(int argc, Value *argv) {
+    int64_t start = 0, end = 0;
+    if (argc == 0) return VAL_NIL_V;
+    if (argc == 1) end = (int64_t)to_float(argv[0]);
+    else {
+        start = (int64_t)to_float(argv[0]);
+        end = (int64_t)to_float(argv[1]);
+    }
+    ObjList *l = list_new();
+    for (int64_t i = start; i < end; i++) list_push(l, VAL_INT_V(i));
+    return VAL_LIST_V(l);
+}
+
+static Value native_mutex(int argc, Value *argv) {
+    (void)argc; (void)argv;
+    return mutex_new();
+}
+
+static Value native_channel(int argc, Value *argv) {
+    int cap = (argc > 0 && IS_INT(argv[0])) ? (int)argv[0].integer : 1;
+    return channel_new(cap);
+}
+
+Value json_stringify(int argc, Value *argv);
+
 void interp_register_stdlib(Interpreter *vm) {
     env_set(vm->globals, str_intern("print", 5), VAL_NATIVE_V(native_print));
     env_set(vm->globals, str_intern("打印", 6), VAL_NATIVE_V(native_print));
+    env_set(vm->globals, str_intern("range", 5), VAL_NATIVE_V(native_range));
+    env_set(vm->globals, str_intern("Mutex", 5), VAL_NATIVE_V(native_mutex));
+    env_set(vm->globals, str_intern("互斥锁", 9), VAL_NATIVE_V(native_mutex));
+    env_set(vm->globals, str_intern("Channel", 7), VAL_NATIVE_V(native_channel));
+    env_set(vm->globals, str_intern("通道", 6), VAL_NATIVE_V(native_channel));
+
+    // 网络模块
+    ObjMap *net = map_new();
+    map_set(net, str_intern("listen", 6), VAL_NATIVE_V(net_listen));
+    map_set(net, str_intern("监听", 6), VAL_NATIVE_V(net_listen));
+    env_set(vm->globals, str_intern("net", 3), VAL_MAP_V(net));
+    env_set(vm->globals, str_intern("网络", 6), VAL_MAP_V(net));
+
+    // 数据模块
+    ObjMap *data = map_new();
+    map_set(data, str_intern("json", 4), VAL_NATIVE_V(json_stringify));
+    env_set(vm->globals, str_intern("data", 4), VAL_MAP_V(data));
+    env_set(vm->globals, str_intern("数据", 6), VAL_MAP_V(data));
+
+    // 界面模块
+    ObjMap *ui = map_new();
+    map_set(ui, str_intern("window", 6), VAL_NATIVE_V(qt_window_new));
+    map_set(ui, str_intern("窗口", 6), VAL_NATIVE_V(qt_window_new));
+    map_set(ui, str_intern("button", 6), VAL_NATIVE_V(qt_button_new));
+    map_set(ui, str_intern("按钮", 6), VAL_NATIVE_V(qt_button_new));
+    env_set(vm->globals, str_intern("ui", 2), VAL_MAP_V(ui));
+    env_set(vm->globals, str_intern("界面", 6), VAL_MAP_V(ui));
 }
 
 Value interp_run_string(const char *src, const char *filename) {

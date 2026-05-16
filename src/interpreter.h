@@ -34,6 +34,7 @@ typedef struct {
 void  interp_init(Interpreter *vm);
 void  interp_register_stdlib(Interpreter *vm);
 Value interp_exec(Interpreter *vm, AstNode *node, Env *env);
+Interpreter *interp_get_current();
 Value interp_run_file(const char *filename);
 Value interp_run_string(const char *src, const char *filename);
 

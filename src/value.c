@@ -76,10 +76,66 @@ void list_push(ObjList *l, Value v) {
 }
 
 Value list_get(ObjList *l, int i) {
-    if (i < 0) i += l->len;
     if (i < 0 || i >= l->len) return VAL_NIL_V;
     return l->items[i];
 }
+
+ObjMap *map_new(void) {
+    ObjMap *m = gc_alloc(sizeof(ObjMap));
+    m->hdr.type = OBJ_MAP;
+    m->hdr.marked = false;
+    m->hdr.next = gc_objects; gc_objects = (Obj*)m;
+    m->len = 0;
+    m->cap = 8;
+    m->keys = malloc(sizeof(ObjStr*) * m->cap);
+    m->vals = malloc(sizeof(Value) * m->cap);
+    return m;
+}
+
+void map_set(ObjMap *m, ObjStr *key, Value val) {
+    for (int i = 0; i < m->len; i++) {
+        if (m->keys[i] == key) { m->vals[i] = val; return; }
+    }
+    if (m->len >= m->cap) {
+        m->cap *= 2;
+        m->keys = realloc(m->keys, sizeof(ObjStr*) * m->cap);
+        m->vals = realloc(m->vals, sizeof(Value) * m->cap);
+    }
+    m->keys[m->len] = key;
+    m->vals[m->len] = val;
+    m->len++;
+}
+
+bool map_get(ObjMap *m, ObjStr *key, Value *out) {
+    for (int i = 0; i < m->len; i++) {
+        if (m->keys[i] == key) { *out = m->vals[i]; return true; }
+    }
+    return false;
+}
+
+ObjStructDef *struct_def_new(ObjStr *name, int field_count) {
+    ObjStructDef *d = gc_alloc(sizeof(ObjStructDef));
+    d->hdr.type = OBJ_STRUCT_DEF;
+    d->hdr.marked = false;
+    d->hdr.next = gc_objects; gc_objects = (Obj*)d;
+    d->name = name;
+    d->field_count = field_count;
+    d->fields = malloc(sizeof(Field) * field_count);
+    d->methods = map_new();
+    return d;
+}
+
+ObjInstance *instance_new(ObjStructDef *def) {
+    ObjInstance *i = gc_alloc(sizeof(ObjInstance));
+    i->hdr.type = OBJ_INSTANCE;
+    i->hdr.marked = false;
+    i->hdr.next = gc_objects; gc_objects = (Obj*)i;
+    i->def = def;
+    i->fields = malloc(sizeof(Value) * def->field_count);
+    for (int j = 0; j < def->field_count; j++) i->fields[j] = VAL_NIL_V;
+    return i;
+}
+
 
 // ── 字典 ─────────────────────────────────────────────────────
 ObjMap *map_new(void) {
@@ -181,21 +237,48 @@ bool value_equal(Value a, Value b) {
 }
 
 // ── GC（简单标记清除，实现在 gc.c）────────────────────────────
+void gc_mark_env(Env *e) {
+    while (e) {
+        for (int i = 0; i < e->count; i++) {
+            gc_mark_value(VAL_STR_V(e->keys[i]));
+            gc_mark_value(e->vals[i]);
+        }
+        e = e->parent;
+    }
+}
+
 void gc_mark_value(Value v) {
     Obj *o = NULL;
     switch (v.type) {
-        case VAL_STRING:   o = (Obj*)v.string;   break;
-        case VAL_LIST:     o = (Obj*)v.list;     break;
-        case VAL_MAP:      o = (Obj*)v.map;      break;
-        case VAL_FN:       o = (Obj*)v.fn;       break;
-        case VAL_INSTANCE: o = (Obj*)v.instance; break;
+        case VAL_STRING:     o = (Obj*)v.string;   break;
+        case VAL_LIST:       o = (Obj*)v.list;     break;
+        case VAL_MAP:        o = (Obj*)v.map;      break;
+        case VAL_STRUCT_DEF: o = (Obj*)v.structdef;break;
+        case VAL_INSTANCE:   o = (Obj*)v.instance; break;
+        case VAL_FN:         o = (Obj*)v.fn;       break;
+        case VAL_COROUTINE:  o = (Obj*)v.coro;     break;
+        case VAL_THREAD:     o = (Obj*)v.thread;   break;
         default: return;
     }
     if (!o || o->marked) return;
     o->marked = true;
+
     if (v.type == VAL_LIST) {
         for (int i = 0; i < v.list->len; i++) gc_mark_value(v.list->items[i]);
     } else if (v.type == VAL_MAP) {
         for (int i = 0; i < v.map->len; i++) gc_mark_value(v.map->vals[i]);
+    } else if (v.type == VAL_STRUCT_DEF) {
+        gc_mark_value(VAL_STR_V(v.structdef->name));
+        gc_mark_value(VAL_MAP_V(v.structdef->methods));
+    } else if (v.type == VAL_INSTANCE) {
+        gc_mark_value(VAL_STRUCT_DEF_V(v.instance->def));
+        for (int i = 0; i < v.instance->def->field_count; i++) gc_mark_value(v.instance->fields[i]);
+    } else if (v.type == VAL_FN) {
+        if (v.fn->name) gc_mark_value(VAL_STR_V(v.fn->name));
+        gc_mark_env(v.fn->closure);
+    } else if (v.type == VAL_THREAD) {
+        gc_mark_value(VAL_FN_V(v.thread->fn));
+        for (int i = 0; i < v.thread->argc; i++) gc_mark_value(v.thread->argv[i]);
+        gc_mark_value(v.thread->result);
     }
 }

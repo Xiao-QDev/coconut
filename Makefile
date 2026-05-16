@@ -1,7 +1,7 @@
 CC      = gcc
 CFLAGS  = -std=c11 -Wall -Wextra -O2 -Isrc
-LDFLAGS = -lm
-SRC     = $(wildcard src/*.c)
+LDFLAGS = -lm -lpthread -lws2_32
+SRC     = $(wildcard src/*.c src/stdlib/*.c)
 TARGET  = pico
 
 all: $(TARGET)

@@ -1,6 +1,10 @@
 #include "gc.h"
 #include "value.h"
 #include "thread.h"
+#include "coroutine.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <stdlib.h>
 
 void gc_collect(void) {
@@ -17,6 +21,8 @@ void gc_collect(void) {
             } else if (unreached->type == OBJ_MAP) {
                 free(((ObjMap*)unreached)->keys);
                 free(((ObjMap*)unreached)->vals);
+            } else if (unreached->type == OBJ_STRUCT_DEF) {
+                free(((ObjStructDef*)unreached)->fields);
             } else if (unreached->type == OBJ_INSTANCE) {
                 free(((ObjInstance*)unreached)->fields);
             } else if (unreached->type == OBJ_FN) {
@@ -27,6 +33,11 @@ void gc_collect(void) {
                 ObjThread *t = (ObjThread*)unreached;
                 if (!t->done) pthread_detach(t->thread);
                 free(t->argv);
+            } else if (unreached->type == OBJ_CORO) {
+                ObjCoro *coro = (ObjCoro*)unreached;
+#ifdef _WIN32
+                if (coro->fiber) DeleteFiber(coro->fiber);
+#endif
             }
             free(unreached);
         } else {

@@ -1,0 +1,21 @@
+# Executables
+pico
+pico.exe
+*.exe
+*.o
+*.a
+*.so
+*.dll
+
+# Temporary files
+*.txt
+bare.c
+test.c
+test.s
+test
+out.txt
+*.log
+
+# IDE
+.vscode/
+.idea/

@@ -51,3 +51,54 @@ Value thread_join(ObjThread *thread) {
     }
     return thread->result;
 }
+
+Value mutex_new() {
+    ObjMutex *m = gc_alloc(sizeof(ObjMutex));
+    m->hdr.type = OBJ_MUTEX;
+    m->hdr.marked = false;
+    m->hdr.next = gc_objects; gc_objects = (Obj*)m;
+    pthread_mutex_init(&m->mutex, NULL);
+    return (Value){VAL_MUTEX, {.mutex = m}};
+}
+
+void mutex_lock(ObjMutex *m) { pthread_mutex_lock(&m->mutex); }
+void mutex_unlock(ObjMutex *m) { pthread_mutex_unlock(&m->mutex); }
+
+Value channel_new(int capacity) {
+    ObjChannel *c = gc_alloc(sizeof(ObjChannel));
+    c->hdr.type = OBJ_CHANNEL;
+    c->hdr.marked = false;
+    c->hdr.next = gc_objects; gc_objects = (Obj*)c;
+    c->capacity = capacity > 0 ? capacity : 1;
+    c->buffer = malloc(sizeof(Value) * c->capacity);
+    c->head = c->tail = c->count = 0;
+    pthread_mutex_init(&c->mutex, NULL);
+    pthread_cond_init(&c->not_empty, NULL);
+    pthread_cond_init(&c->not_full, NULL);
+    return (Value){VAL_CHANNEL, {.channel = c}};
+}
+
+void channel_send(ObjChannel *c, Value val) {
+    pthread_mutex_lock(&c->mutex);
+    while (c->count == c->capacity) {
+        pthread_cond_wait(&c->not_full, &c->mutex);
+    }
+    c->buffer[c->tail] = val;
+    c->tail = (c->tail + 1) % c->capacity;
+    c->count++;
+    pthread_cond_signal(&c->not_empty);
+    pthread_mutex_unlock(&c->mutex);
+}
+
+Value channel_recv(ObjChannel *c) {
+    pthread_mutex_lock(&c->mutex);
+    while (c->count == 0) {
+        pthread_cond_wait(&c->not_empty, &c->mutex);
+    }
+    Value val = c->buffer[c->head];
+    c->head = (c->head + 1) % c->capacity;
+    c->count--;
+    pthread_cond_signal(&c->not_full);
+    pthread_mutex_unlock(&c->mutex);
+    return val;
+}

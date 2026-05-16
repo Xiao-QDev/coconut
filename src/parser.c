@@ -264,8 +264,10 @@ static AstNode *parse_primary(Parser *p) {
             n = new_node(p, NODE_FN);
             advance(p);
             parse_params(p, &n->fn.params, &n->fn.param_count);
-            if (check(p, TOK_COLON) || check(p, TOK_LBRACE) || check(p, TOK_BEGIN))
+            if (check(p, TOK_COLON) || check(p, TOK_LBRACE) || check(p, TOK_BEGIN)) {
                 n->fn.body = parse_block(p);
+                n->fn.is_generator = block_contains_yield(n->fn.body);
+            }
             return n;
         }
         default: {
@@ -362,6 +364,25 @@ static AstNode *parse_expr_bp(Parser *p, int min_bp) {
 static AstNode *parse_expr(Parser *p) { return parse_expr_bp(p, 0); }
 
 // ── 语句 ─────────────────────────────────────────────────────
+static bool block_contains_yield(AstNode *node) {
+    if (!node) return false;
+    if (node->type == NODE_YIELD) return true;
+    if (node->type == NODE_BLOCK) {
+        for (int i = 0; i < node->block.stmts.count; i++)
+            if (block_contains_yield(node->block.stmts.items[i])) return true;
+    }
+    if (node->type == NODE_IF) return block_contains_yield(node->ifnode.then) || block_contains_yield(node->ifnode.els);
+    if (node->type == NODE_WHILE) return block_contains_yield(node->whilenode.body);
+    if (node->type == NODE_FOR) return block_contains_yield(node->fornode.body);
+    if (node->type == NODE_TRY) return block_contains_yield(node->trynode.body) || block_contains_yield(node->trynode.catch_body);
+    if (node->type == NODE_MATCH) {
+        for (int i = 0; i < node->matchnode.bodies.count; i++)
+            if (block_contains_yield(node->matchnode.bodies.items[i])) return true;
+        if (block_contains_yield(node->matchnode.default_body)) return true;
+    }
+    return false;
+}
+
 static AstNode *parse_fn(Parser *p, bool is_async) {
     AstNode *n = new_node(p, NODE_FN);
     advance(p);  // skip fn/函数
@@ -376,8 +397,10 @@ static AstNode *parse_fn(Parser *p, bool is_async) {
         p->peek.type != TOK_LBRACE && p->peek.type != TOK_BEGIN) {
         advance(p); advance(p);  // skip ': type'
     }
-    if (check(p, TOK_COLON) || check(p, TOK_LBRACE) || check(p, TOK_BEGIN))
+    if (check(p, TOK_COLON) || check(p, TOK_LBRACE) || check(p, TOK_BEGIN)) {
         n->fn.body = parse_block(p);
+        n->fn.is_generator = block_contains_yield(n->fn.body);
+    }
     return n;
 }
 
