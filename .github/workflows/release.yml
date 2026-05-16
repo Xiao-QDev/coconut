@@ -1,0 +1,85 @@
+name: Build and Release Pico
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y build-essential
+      
+    - name: Build
+      run: |
+        gcc -std=c11 -Wall -Wextra -O2 -Isrc src/*.c src/stdlib/*.c -lm -lpthread -o pico
+      
+    - name: Test
+      run: ./pico examples/hello.pico
+      
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pico-linux
+        path: pico
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-make
+        
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        gcc -std=c11 -Wall -Wextra -O2 -Isrc src/*.c src/stdlib/*.c -lm -lpthread -lws2_32 -o pico.exe
+      
+    - name: Test
+      shell: msys2 {0}
+      run: ./pico.exe examples/hello.pico
+      
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pico-windows
+        path: pico.exe
+
+  release:
+    needs: [build-linux, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Linux Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: pico-linux
+        path: ./release
+        
+    - name: Download Windows Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: pico-windows
+        path: ./release
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          ./release/pico
+          ./release/pico.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
