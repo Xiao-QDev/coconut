@@ -39,7 +39,7 @@ static int cn_punct_to_ascii(const char *p, int *skip) {
 }
 
 // ── 关键字表 ─────────────────────────────────────────────────
-typedef struct { const char *word; TokenType type; } KW;
+typedef struct { const char *word; PicoTokenType type; } KW;
 static const KW kw_table[] = {
     {"fn",TOK_FN},{"function",TOK_FN},{"函数",TOK_FN},{"方法",TOK_FN},
     {"let",TOK_LET},{"var",TOK_LET},{"定义",TOK_LET},{"令",TOK_LET},
@@ -71,7 +71,7 @@ static const KW kw_table[] = {
     {NULL,0}
 };
 
-static TokenType lookup_keyword(const char *s, int len) {
+static PicoTokenType lookup_keyword(const char *s, int len) {
     for (int i = 0; kw_table[i].word; i++) {
         if ((int)strlen(kw_table[i].word) == len &&
             memcmp(kw_table[i].word, s, len) == 0)
@@ -121,7 +121,7 @@ static void advance(Lexer *l) {
     l->pos++;
 }
 
-static Token make_tok(Lexer *l, TokenType t, int start, int line, int col) {
+static Token make_tok(Lexer *l, PicoTokenType t, int start, int line, int col) {
     return (Token){t, l->src + start, l->pos - start, line, col};
 }
 
@@ -174,7 +174,7 @@ static Token read_ident(Lexer *l) {
         for (int i = 0; i < clen; i++) advance(l);
     }
     int len = l->pos - start;
-    TokenType t = lookup_keyword(l->src + start, len);
+    PicoTokenType t = lookup_keyword(l->src + start, len);
     return (Token){t, l->src + start, len, line, col};
 }
 
@@ -252,7 +252,6 @@ retry:
             // 替换为对应 ASCII token
             for (int i = 0; i < skip; i++) advance(l);
             // 重新分发
-            char tmp[2] = {(char)ascii, 0};
             // 直接构造 token
             switch (ascii) {
                 case ',': return (Token){TOK_COMMA,    l->src+start, skip, line, col};
@@ -340,7 +339,7 @@ Token lexer_peek(Lexer *l) {
     return t;
 }
 
-const char *token_type_name(TokenType t) {
+const char *token_type_name(PicoTokenType t) {
     static const char *names[] = {
         "INT","FLOAT","STRING","IDENT","FSTRING",
         "fn","let","struct","if","else","for","while","return","yield",

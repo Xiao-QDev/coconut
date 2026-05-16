@@ -1,5 +1,6 @@
 #pragma once
 #include <stddef.h>
+#include <stdbool.h>
 
 typedef enum {
     // 字面量
@@ -24,10 +25,10 @@ typedef enum {
     TOK_LBRACKET, TOK_RBRACKET,
     TOK_NEWLINE, TOK_INDENT, TOK_DEDENT,
     TOK_EOF, TOK_ERROR
-} TokenType;
+} PicoTokenType;
 
 typedef struct {
-    TokenType   type;
+    PicoTokenType   type;
     const char *start;   // 指向源码（不拥有）
     int         len;
     int         line;
@@ -48,4 +49,4 @@ typedef struct {
 void  lexer_init(Lexer *l, const char *src);
 Token lexer_next(Lexer *l);
 Token lexer_peek(Lexer *l);
-const char *token_type_name(TokenType t);
+const char *token_type_name(PicoTokenType t);

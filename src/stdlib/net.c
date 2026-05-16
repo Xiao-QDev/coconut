@@ -66,6 +66,7 @@ Value net_listen(int argc, Value *argv) {
                 // 调用 Pico 处理函数
                 // 暂时只传路径字符串
                 Value arg = VAL_STR_V(str_intern(path, (int)strlen(path)));
+                (void)arg;
                 Interpreter *vm = interp_get_current();
                 Value response = interp_exec(vm, handler.fn->body, env_new(handler.fn->closure));
                 // 暂时假设返回字符串

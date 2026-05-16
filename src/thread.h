@@ -12,12 +12,12 @@ struct ObjThread {
     Value    *argv;
 };
 
-typedef struct {
+struct ObjMutex {
     Obj             hdr;
     pthread_mutex_t mutex;
-} ObjMutex;
+};
 
-typedef struct {
+struct ObjChannel {
     Obj             hdr;
     Value          *buffer;
     int             capacity;
@@ -27,7 +27,7 @@ typedef struct {
     pthread_mutex_t mutex;
     pthread_cond_t  not_empty;
     pthread_cond_t  not_full;
-} ObjChannel;
+};
 
 Value thread_spawn(ObjFn *fn, int argc, Value *argv);
 Value thread_join(ObjThread *thread);

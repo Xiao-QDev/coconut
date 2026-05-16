@@ -56,8 +56,22 @@ jobs:
         name: pico-windows
         path: pico.exe
 
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: gcc -std=c11 -Wall -Wextra -O2 -Isrc src/*.c src/stdlib/*.c -lm -lpthread -o pico
+    - name: Test
+      run: ./pico examples/hello.pico
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pico-macos
+        path: pico
+
   release:
-    needs: [build-linux, build-windows]
+    needs: [build-linux, build-windows, build-macos]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
@@ -72,13 +86,24 @@ jobs:
       with:
         name: pico-windows
         path: ./release
-        
+
+    - name: Download macOS Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: pico-macos
+        path: ./release
+
+    - name: Rename binaries
+      run: |
+        mv ./release/pico ./release/pico-linux || true
+        chmod +x ./release/pico-linux ./release/pico-macos 2>/dev/null || true
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          ./release/pico
+          ./release/pico-linux
           ./release/pico.exe
+          ./release/pico-macos
         draft: false
         prerelease: false
       env:

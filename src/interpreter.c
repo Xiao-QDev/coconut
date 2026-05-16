@@ -1,8 +1,8 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#define _POSIX_C_SOURCE 200809L
 #include "interpreter.h"
 #include "lexer.h"
 #include "parser.h"
@@ -186,7 +186,7 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
         if (vm->has_error) return VAL_NIL_V;
         Value r = interp_exec(vm, node->binop.right, env);
         if (vm->has_error) return VAL_NIL_V;
-        TokenType op = node->binop.op;
+        PicoTokenType op = node->binop.op;
         if (op == TOK_EQ)  return VAL_BOOL_V(value_equal(l, r));
         if (op == TOK_NEQ) return VAL_BOOL_V(!value_equal(l, r));
         if (op == TOK_DOTDOT) {

@@ -33,13 +33,13 @@ static Token advance_raw(Parser *p) {
     return t;
 }
 
-static bool check(Parser *p, TokenType t) { return p->cur.type == t; }
-static bool match(Parser *p, TokenType t) {
+static bool check(Parser *p, PicoTokenType t) { return p->cur.type == t; }
+static bool match(Parser *p, PicoTokenType t) {
     if (!check(p, t)) return false;
     advance(p); return true;
 }
 
-static Token expect(Parser *p, TokenType t) {
+static Token expect(Parser *p, PicoTokenType t) {
     if (p->cur.type != t) {
         pico_error(p->filename, p->cur.line, p->cur.col,
             "期望 '%s'，得到 '%s'", token_type_name(t), token_type_name(p->cur.type));
@@ -126,14 +126,14 @@ static void parse_params(Parser *p, char ***params, int *count) {
 }
 
 // ── 表达式（Pratt 解析）──────────────────────────────────────
-static int prefix_bp(TokenType t) {
+static int prefix_bp(PicoTokenType t) {
     switch (t) {
         case TOK_MINUS: case TOK_NOT: return 70;
         default: return -1;
     }
 }
 
-static int infix_bp(TokenType t) {
+static int infix_bp(PicoTokenType t) {
     switch (t) {
         case TOK_OR:    return 10;
         case TOK_AND:   return 20;
@@ -299,7 +299,7 @@ static AstNode *parse_expr_bp(Parser *p, int min_bp) {
     }
 
     while (true) {
-        TokenType op = p->cur.type;
+        PicoTokenType op = p->cur.type;
         int bp = infix_bp(op);
         if (bp < min_bp) break;
 
@@ -620,7 +620,7 @@ static AstNode *parse_stmt(Parser *p) {
             AstNode *expr = parse_expr(p);
             if (check(p, TOK_ASSIGN) || check(p, TOK_PLUS_ASSIGN) ||
                 check(p, TOK_MINUS_ASSIGN)) {
-                TokenType op = p->cur.type;
+                PicoTokenType op = p->cur.type;
                 advance(p);
                 AstNode *val = parse_expr(p);
                 AstNode *n = new_node(p, NODE_ASSIGN);

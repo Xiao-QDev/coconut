@@ -7,7 +7,7 @@
 static void stringify_value(Value v, char *buf, int *pos) {
     if (IS_NIL(v)) { *pos += sprintf(buf + *pos, "null"); }
     else if (IS_BOOL(v)) { *pos += sprintf(buf + *pos, v.boolean ? "true" : "false"); }
-    else if (IS_INT(v)) { *pos += sprintf(buf + *pos, "%lld", v.integer); }
+    else if (IS_INT(v)) { *pos += sprintf(buf + *pos, "%ld", (long)v.integer); }
     else if (IS_FLOAT(v)) { *pos += sprintf(buf + *pos, "%g", v.floating); }
     else if (IS_STR(v)) { *pos += sprintf(buf + *pos, "\"%s\"", v.string->data); }
     else if (IS_LIST(v)) {

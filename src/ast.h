@@ -48,10 +48,10 @@ struct AstNode {
         bool     bval;
         struct { char *s; int len; }  sval;   // STRING / IDENT
         struct { NodeList parts; }    fstr;   // FSTRING: alternating str/expr
-        struct { AstNode *left; AstNode *right; TokenType op; } binop;
-        struct { AstNode *operand; TokenType op; }              unop;
+        struct { AstNode *left; AstNode *right; PicoTokenType op; } binop;
+        struct { AstNode *operand; PicoTokenType op; }              unop;
         struct { char *name; AstNode *value; }                  let;
-        struct { char *name; AstNode *value; TokenType op; }    assign;
+        struct { char *name; AstNode *value; PicoTokenType op; }    assign;
         struct { NodeList elements; }                           list;
         struct { NodeList keys; NodeList vals; }                map;
         struct { AstNode *obj; AstNode *idx; }                  index;

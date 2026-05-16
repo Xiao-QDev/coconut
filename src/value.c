@@ -1,4 +1,5 @@
 #include "value.h"
+#include "thread.h"
 #include "interpreter.h"
 #include <stdlib.h>
 #include <string.h>

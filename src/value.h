@@ -29,8 +29,6 @@ typedef struct Obj {
     struct Obj *next;
 } Obj;
 
-typedef struct ObjCoro ObjCoro;
-
 typedef enum {
     VAL_NIL, VAL_BOOL, VAL_INT, VAL_FLOAT,
 
@@ -170,6 +168,9 @@ ObjMap  *map_new(void);
 void     map_set(ObjMap *m, ObjStr *key, Value val);
 bool     map_get(ObjMap *m, ObjStr *key, Value *out);
 bool     map_del(ObjMap *m, ObjStr *key);
+
+ObjStructDef *struct_def_new(ObjStr *name, int field_count);
+ObjInstance  *instance_new(ObjStructDef *def);
 
 // ── 打印 ─────────────────────────────────────────────────────
 void value_print(Value v);

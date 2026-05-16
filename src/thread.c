@@ -2,6 +2,7 @@
 #include "interpreter.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 static void *thread_wrapper(void *arg) {
     ObjThread *t = (ObjThread*)arg;
