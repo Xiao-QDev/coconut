@@ -482,6 +482,31 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
     case NODE_METHOD_CALL: {
         Value obj = interp_exec(vm, node->mcall.obj, env);
         if (vm->has_error) return VAL_NIL_V;
+        // super.method() — obj 是 VAL_STRUCT_DEF，self 从当前 env 取
+        if (obj.type == VAL_STRUCT_DEF) {
+            ObjStr *mname = str_intern(node->mcall.method, (int)strlen(node->mcall.method));
+            Value m;
+            ObjStructDef *cls = obj.structdef;
+            while (cls) { if (map_get(cls->methods, mname, &m)) break; cls = cls->parent; }
+            if (cls) {
+                Value self_val; env_get(env, str_intern("self", 4), &self_val);
+                int argc = node->mcall.args.count;
+                Value *argv = argc ? malloc(sizeof(Value) * argc) : NULL;
+                for (int i = 0; i < argc; i++) argv[i] = interp_exec(vm, node->mcall.args.items[i], env);
+                ObjFn *fn = m.fn;
+                Env *call_env = env_new(fn->closure);
+                env_set(call_env, str_intern("self", 4), self_val);
+                env_set(call_env, str_intern("自身", 6), self_val);
+                for (int i = 0; i < fn->arity && i < argc; i++)
+                    env_set(call_env, str_intern(fn->params[i], (int)strlen(fn->params[i])), argv[i]);
+                Value res = interp_exec(vm, fn->body, call_env);
+                if (vm->returning) { res = vm->return_val; vm->returning = false; }
+                env_free(call_env); free(argv);
+                return res;
+            }
+            set_error(vm, "super has no method '%s'", node->mcall.method);
+            return VAL_NIL_V;
+        }
         if (IS_THREAD(obj)) {
             if (strcmp(node->mcall.method, "wait") == 0 || strcmp(node->mcall.method, "等待") == 0) {
                 return thread_join(obj.thread);
@@ -510,7 +535,13 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
             ObjInstance *inst = obj.instance;
             ObjStr *mname = str_intern(node->mcall.method, (int)strlen(node->mcall.method));
             Value m;
-            if (map_get(inst->def->methods, mname, &m)) {
+            // 沿继承链查找方法
+            ObjStructDef *cls = inst->def;
+            while (cls) {
+                if (map_get(cls->methods, mname, &m)) break;
+                cls = cls->parent;
+            }
+            if (cls) {
                 int argc = node->mcall.args.count;
                 Value *argv = argc ? malloc(sizeof(Value) * argc) : NULL;
                 for (int i = 0; i < argc; i++) argv[i] = interp_exec(vm, node->mcall.args.items[i], env);
@@ -518,6 +549,11 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
                 Env *call_env = env_new(fn->closure);
                 env_set(call_env, str_intern("self", 4), obj);
                 env_set(call_env, str_intern("自身", 6), obj);
+                // super: 绑定到父类定义，供方法内调用 super.method()
+                if (inst->def->parent) {
+                    env_set(call_env, str_intern("super", 5), VAL_STRUCT_DEF_V(inst->def->parent));
+                    env_set(call_env, str_intern("父类", 6), VAL_STRUCT_DEF_V(inst->def->parent));
+                }
                 for (int i = 0; i < fn->arity && i < argc; i++) {
                     env_set(call_env, str_intern(fn->params[i], (int)strlen(fn->params[i])), argv[i]);
                 }
@@ -541,6 +577,13 @@ Value interp_exec(Interpreter *vm, AstNode *node, Env *env) {
         for (int i = 0; i < node->structdef.methods.count; i++) {
             Value fn = interp_exec(vm, node->structdef.methods.items[i], env);
             map_set(def->methods, fn.fn->name, fn);
+        }
+        // 继承
+        if (node->structdef.parent_name) {
+            ObjStr *pname = str_intern(node->structdef.parent_name, (int)strlen(node->structdef.parent_name));
+            Value pv;
+            if (env_get(env, pname, &pv) && pv.type == VAL_STRUCT_DEF)
+                def->parent = pv.structdef;
         }
         env_set(env, name, VAL_STRUCT_DEF_V(def));
         return VAL_NIL_V;

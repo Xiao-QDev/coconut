@@ -82,6 +82,7 @@ struct AstNode {
         struct { AstNode *obj; char *field; }                   field;
         struct {
             char    *name;
+            char    *parent_name;  // 继承：struct 子(父):
             char   **field_names;
             int      field_count;
             NodeList methods;

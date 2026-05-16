@@ -411,6 +411,15 @@ static AstNode *parse_struct(Parser *p) {
     advance(p);
     Token name = expect(p, TOK_IDENT);
     n->structdef.name = tok_str(p, name);
+    n->structdef.parent_name = NULL;
+
+    // 继承：struct 子类(父类):
+    if (check(p, TOK_LPAREN)) {
+        advance(p);
+        Token pname = expect(p, TOK_IDENT);
+        n->structdef.parent_name = tok_str(p, pname);
+        expect(p, TOK_RPAREN);
+    }
 
     // 字段和方法在块中
     skip_newlines(p);

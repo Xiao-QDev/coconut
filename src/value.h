@@ -94,6 +94,7 @@ typedef struct ObjStructDef {
     Field  *fields;
     int     field_count;
     ObjMap *methods;
+    struct ObjStructDef *parent;  // 继承链
 } ObjStructDef;
 
 struct ObjInstance {
