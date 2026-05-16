@@ -1,85 +1,94 @@
-# Pico 编程语言 (Pico Programming Language)
+# Pico 编程语言
 
-Pico 是一种用 C 语言构建的通用编程语言，旨在提供伪代码般的简洁语法、即时反馈的开发体验以及强大的底层控制能力。
+Pico 是用 C 实现的通用编程语言，伪代码风格语法，中英文关键字双写，即时反馈。
 
-## 核心特性
+[![Build](https://github.com/ZerexaNet/Pico/actions/workflows/release.yml/badge.svg)](https://github.com/ZerexaNet/Pico/actions)
 
-- **双语语法**：支持中英文关键字对照（如 `fn` / `函数`，`let` / `定义`）。
-- **标点兼容**：全面兼容中英文标点符号（如 `，` -> `,`，`：` -> `:`）。
-- **多种块风格**：支持缩进、大括号 `{}` 或 `开始`/`结束` 关键字。
-- **高性能解释器**：基于 AST 的树遍历解释器，支持闭包、高阶函数。
-- **原生并发**：
-  - **多线程**：基于 `pthread` 的系统级线程，内置 `Mutex` (互斥锁) 和 `Channel` (通道)。
-  - **协程/生成器**：基于 Windows Fiber 实现的轻量级协程，支持 `yield` / `产出`。
-- **面向对象**：支持 `struct` / `结构体` 定义，支持方法绑定和 `self` 访问。
-- **内置 Web 服务**：支持高性能 HTTP 服务器开发。
-- **C 代码生成**：可将 Pico 源码转译为 C 代码，编译为原生二进制文件。
+## 特性
 
-## 快速入门
+- **双语语法**：`fn` / `函数`，`let` / `定义`，`if` / `如果` 等，中英文等价
+- **标点兼容**：`，` `：` `（）` `【】` 自动等价于 ASCII 标点
+- **三种块风格**：缩进块 / 大括号 `{}` / `开始`…`结束`
+- **面向对象**：`struct` / `结构体`，方法，继承 `struct 子类(父类):`，`super`
+- **并发**：`spawn` / `启动` 多线程，`Mutex` 互斥锁，`Channel` 通道，`yield` 生成器
+- **字节码 VM**：AST 编译为字节码，VM 执行（30+ 指令）
+- **WASM 支持**：`pico_wasm_run()` 导出，emcc 编译为 `.wasm` 在浏览器运行
+- **Qt GUI**：`ui.window` / `ui.button` / `ui.label` / `ui.input`（需 Qt 环境）
+- **标准库**：IO、字符串、列表、字典、数学、文件、HTTP 服务器、JSON
+- **友好错误**：精确行列定位 + "你是否想说？"建议
 
-### 安装
-目前支持在 Windows (MinGW/MSYS2) 下构建：
+## 快速开始
+
+**文档：** https://pico.zerexa.cn
+
+**下载：** [GitHub Releases](https://github.com/ZerexaNet/Pico/releases/latest)
 
 ```bash
-git clone <repository-url>
-cd pico
-make
+# 从源码编译
+git clone https://github.com/ZerexaNet/Pico.git
+cd Pico && make
+./pico          # 启动 REPL
+./pico run hello.pico
 ```
 
-### 示例代码
+## 示例
 
-**Hello World (中英混写):**
-```pico
-函数 问候(名字):
-    打印(f"你好，{名字}！")
-
-问候("Pico")
 ```
+# Hello World
+令 名字 = "世界"
+打印(f"你好，{名字}！")
 
-**多线程并发:**
-```pico
-令 通道 = 通道(1)
+# 结构体与继承
+结构体 动物:
+    名字: str
+    fn 说话(self): return f"{self.名字}..."
 
-启动 函数():
-    时间.睡眠(1000)
-    通道.发送("来自子线程的消息")
+结构体 狗(动物):
+    fn 说话(self): return f"{self.名字}：汪汪！"
 
-打印(通道.接收())
-```
+令 d = 狗{名字: "旺财"}
+打印(d.说话())
 
-**Web 服务器:**
-```pico
-网络.监听(8080, 函数(路径):
-    返回 f"<h1>你访问了: {路径}</h1>"
+# 多线程
+令 任务 = 启动 fn(): return 1 + 1
+打印(任务.等待())
+
+# Web 服务器
+net.listen(8080, fn(路径):
+    return f"<h1>访问了 {路径}</h1>"
 )
 ```
 
 ## 目录结构
 
-- `src/`：编译器/解释器核心源码。
-  - `lexer.c` / `parser.c`：词法与语法分析。
-  - `interpreter.c`：求值引擎。
-  - `value.c`：动态类型系统。
-  - `thread.c` / `coroutine.c`：并发与协程支持。
-  - `codegen.c`：C 代码生成器。
-  - `stdlib/`：内置标准库（网络、JSON、Qt 绑定等）。
-- `examples/`：语言功能演示示例。
-- `tests/`：自动化测试用例。
+```
+src/
+  lexer.c / parser.c     词法与语法分析
+  interpreter.c          树遍历求值引擎
+  vm.c / compiler.c      字节码 VM 与编译器
+  wasm_entry.c           WASM 导出入口
+  value.c                动态类型系统
+  thread.c / coroutine.c 并发与协程
+  codegen.c              C 代码生成器
+  stdlib/                标准库（net, json, qt_bind）
+examples/                示例代码
+tests/                   测试用例
+```
 
-## 实现路线图
+## 路线图
 
-- [x] MVP 解释器 (词法、语法、求值)
-- [x] 结构体与字典
-- [x] 基于 Fiber 的协程/生成器
-- [x] 多线程 (Mutex, Channel)
-- [x] 基础标准库 (IO, Net, JSON)
-- [x] C 代码生成原型
-- [ ] WASM 兼容性 (Web 部署)
-- [ ] Qt 图形界面绑定完善
-- [ ] 字节码虚拟机 (VM)
-
-## 贡献
-欢迎提交 Issue 或 Pull Request 来完善 Pico 语言！
+- [x] MVP 解释器（词法、语法、求值）
+- [x] 结构体、字典、闭包
+- [x] 协程 / 生成器（yield）
+- [x] 多线程（Mutex、Channel）
+- [x] 面向对象继承（super）
+- [x] 标准库（IO、Net、JSON）
+- [x] 字节码虚拟机（VM）
+- [x] WASM 兼容（Web 部署）
+- [x] Qt 图形界面绑定
+- [ ] 类型系统（可选静态标注）
+- [ ] 包管理器
 
 ## 许可证
-Apache2.0 License
+
+Apache 2.0
