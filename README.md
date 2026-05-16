@@ -82,4 +82,4 @@ make
 欢迎提交 Issue 或 Pull Request 来完善 Pico 语言！
 
 ## 许可证
-MIT License
+Apache2.0 License
