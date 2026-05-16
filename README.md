@@ -11,9 +11,15 @@ Pico 是用 C 实现的通用编程语言，伪代码风格语法，中英文关
 - **三种块风格**：缩进块 / 大括号 `{}` / `开始`…`结束`
 - **面向对象**：`struct` / `结构体`，方法，继承 `struct 子类(父类):`，`super`
 - **并发**：`spawn` / `启动` 多线程，`Mutex` 互斥锁，`Channel` 通道，`yield` 生成器
+  > [!WARNING]
+  > 多线程、协程、网络功能在 WASM 环境下不可用（stub 实现，调用无效果）。
 - **字节码 VM**：AST 编译为字节码，VM 执行（30+ 指令）
 - **WASM 支持**：`pico_wasm_run()` 导出，emcc 编译为 `.wasm` 在浏览器运行
+  > [!WARNING]
+  > WASM 构建仅支持核心语言特性（运算、控制流、结构体、闭包）。线程、协程、网络、Qt GUI 均为 stub，调用无效果。
 - **Qt GUI**：`ui.window` / `ui.button` / `ui.label` / `ui.input`（需 Qt 环境）
+  > [!WARNING]
+  > Qt 绑定需编译时加 `-DQT_AVAILABLE` 并链接 Qt 库。未启用时所有 `ui.*` 调用返回 nil。
 - **标准库**：IO、字符串、列表、字典、数学、文件、HTTP 服务器、JSON
 - **友好错误**：精确行列定位 + "你是否想说？"建议
 
