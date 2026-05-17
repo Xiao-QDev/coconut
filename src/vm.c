@@ -58,15 +58,23 @@ int global_idx(VM *vm, const char *name) {
     return vm->global_count++;
 }
 
-#define READ_BYTE()  (*vm->ip++)
-#define READ_SHORT() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
-#define READ_CONST() (vm->chunk->chunk.constants[READ_BYTE()])
+#define FRAME()      (&vm->frames[vm->frame_count - 1])
+#define READ_BYTE()  (*FRAME()->ip++)
+#define READ_SHORT() (FRAME()->ip += 2, (uint16_t)((FRAME()->ip[-2] << 8) | FRAME()->ip[-1]))
+#define READ_CONST() (FRAME()->chunk->chunk.constants[READ_BYTE()])
+
+static void push_frame(VM *vm, ObjChunk *chunk, int slot_base) {
+    CallFrame *f = &vm->frames[vm->frame_count++];
+    f->chunk      = chunk;
+    f->ip         = chunk->chunk.code;
+    f->slots      = vm->stack + slot_base;
+    f->slot_base  = slot_base;
+}
 
 Value vm_run(VM *vm, ObjChunk *chunk) {
     vm->chunk = chunk;
     vm->ip    = chunk->chunk.code;
-    Value locals[64];
-    memset(locals, 0, sizeof(locals));
+    push_frame(vm, chunk, 0);
 
     for (;;) {
         uint8_t op = READ_BYTE();
@@ -77,8 +85,8 @@ Value vm_run(VM *vm, ObjChunk *chunk) {
         case OP_FALSE:   push(vm, VAL_BOOL_V(false)); break;
         case OP_POP:     pop(vm); break;
 
-        case OP_GET_LOCAL:  push(vm, locals[READ_BYTE()]); break;
-        case OP_SET_LOCAL:  locals[READ_BYTE()] = peek(vm, 0); break;
+        case OP_GET_LOCAL:  push(vm, FRAME()->slots[READ_BYTE()]); break;
+        case OP_SET_LOCAL:  FRAME()->slots[READ_BYTE()] = peek(vm, 0); break;
         case OP_GET_GLOBAL: { int i = READ_BYTE(); push(vm, vm->globals[i]); break; }
         case OP_SET_GLOBAL: { int i = READ_BYTE(); vm->globals[i] = peek(vm, 0); break; }
 
@@ -155,13 +163,25 @@ Value vm_run(VM *vm, ObjChunk *chunk) {
                 vm->sp -= argc + 1;
                 push(vm, res);
             } else if (callee.type == VAL_FN) {
-                // simple: re-use interpreter for fn calls (avoids full call frame impl)
-                // TODO: full VM call frames
-                push(vm, VAL_NIL_V);
+                ObjFn *fn = callee.fn;
+                if (fn->vm_chunk && vm->frame_count < 64) {
+                    int slot_base = vm->sp - argc;
+                    push_frame(vm, (ObjChunk*)fn->vm_chunk, slot_base);
+                } else {
+                    push(vm, VAL_NIL_V);
+                }
             }
             break;
         }
-        case OP_RETURN: return vm->sp > 0 ? pop(vm) : VAL_NIL_V;
+        case OP_RETURN: {
+            Value ret = vm->sp > 0 ? pop(vm) : VAL_NIL_V;
+            vm->frame_count--;
+            if (vm->frame_count == 0) return ret;
+            // restore sp to before callee + args
+            vm->sp = FRAME()->slot_base - 1; // -1 for the callee slot
+            push(vm, ret);
+            break;
+        }
         default: break;
         }
         next:;

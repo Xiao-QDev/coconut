@@ -1,0 +1,42 @@
+let fail_count: int = 0
+
+fn assert(cond, msg):
+    if not cond:
+        打印(f"FAIL: {msg}")
+        fail_count = fail_count + 1
+
+fn make_adder(n):
+    fn adder(x):
+        return x + n
+    return adder
+
+let add5 = make_adder(5)
+assert(add5(3) == 8, "closure captures n")
+assert(add5(10) == 15, "closure reuse")
+
+fn counter():
+    let n = 0
+    fn inc():
+        n = n + 1
+        return n
+    return inc
+
+let c = counter()
+assert(c() == 1, "closure counter 1")
+assert(c() == 2, "closure counter 2")
+
+fn gen_range(lo, hi):
+    let i = lo
+    while i <= hi:
+        yield i
+        i = i + 1
+
+let total = 0
+for v in gen_range(1, 5):
+    total = total + v
+assert(total == 15, "generator sum 1..5")
+
+if fail_count == 0:
+    打印("test_closures: all passed")
+else:
+    打印(f"test_closures: {fail_count} failed")

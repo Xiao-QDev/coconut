@@ -1,0 +1,48 @@
+let fail_count: int = 0
+
+fn assert(cond, msg):
+    if not cond:
+        打印(f"FAIL: {msg}")
+        fail_count = fail_count + 1
+
+# str module
+assert(str.upper("hello") == "HELLO", "str.upper")
+assert(str.lower("WORLD") == "world", "str.lower")
+assert(str.trim("  hi  ") == "hi", "str.trim")
+assert(str.contains("foobar", "oba"), "str.contains")
+assert(str.starts_with("hello", "hel"), "str.starts_with")
+assert(str.ends_with("hello", "llo"), "str.ends_with")
+assert(str.replace("aabbcc", "bb", "XX") == "aaXXcc", "str.replace")
+assert(str.len("abc") == 3, "str.len")
+
+let parts = str.split("a,b,c", ",")
+assert(parts[0] == "a", "str.split[0]")
+assert(parts[1] == "b", "str.split[1]")
+assert(parts[2] == "c", "str.split[2]")
+
+let joined = str.join(["x", "y", "z"], "-")
+assert(joined == "x-y-z", "str.join")
+
+# file module
+file.write("/tmp/pico_test.txt", "hello\nworld")
+assert(file.exists("/tmp/pico_test.txt"), "file.exists")
+let content = file.read("/tmp/pico_test.txt")
+assert(content == "hello\nworld", "file.read")
+file.append("/tmp/pico_test.txt", "\nbye")
+let lines = file.lines("/tmp/pico_test.txt")
+assert(lines[0] == "hello", "file.lines[0]")
+assert(lines[1] == "world", "file.lines[1]")
+assert(lines[2] == "bye", "file.lines[2]")
+
+# maplib module
+let m = {"a": 1, "b": 2}
+assert(maplib.has(m, "a"), "maplib.has true")
+assert(not maplib.has(m, "z"), "maplib.has false")
+assert(maplib.size(m) == 2, "maplib.size")
+maplib.delete(m, "a")
+assert(not maplib.has(m, "a"), "maplib.delete")
+
+if fail_count == 0:
+    打印("test_stdlib: all passed")
+else:
+    打印(f"test_stdlib: {fail_count} failed")

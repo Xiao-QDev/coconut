@@ -1,0 +1,39 @@
+let fail_count: int = 0
+
+fn assert(cond, msg):
+    if not cond:
+        打印(f"FAIL: {msg}")
+        fail_count = fail_count + 1
+
+struct Animal:
+    name
+    fn speak(self):
+        return "..."
+
+struct Dog(Animal):
+    fn speak(self):
+        return "Woof"
+    fn greet(self):
+        return f"I am {self.name}"
+
+let d = Dog{name: "Rex"}
+assert(d.name == "Rex", "struct field")
+assert(d.speak() == "Woof", "method override")
+assert(d.greet() == "I am Rex", "method with self")
+
+struct Counter:
+    count
+    fn inc(self):
+        self.count = self.count + 1
+    fn get(self):
+        return self.count
+
+let c = Counter{count: 0}
+c.inc()
+c.inc()
+assert(c.get() == 2, "mutable field via method")
+
+if fail_count == 0:
+    打印("test_oop: all passed")
+else:
+    打印(f"test_oop: {fail_count} failed")

@@ -1,0 +1,31 @@
+let fail_count: int = 0
+
+fn assert(cond, msg):
+    if not cond:
+        打印(f"FAIL: {msg}")
+        fail_count = fail_count + 1
+
+let mu = Mutex()
+let ch = Channel(1)
+
+let shared = 0
+
+fn worker():
+    mu.lock()
+    shared = shared + 1
+    mu.unlock()
+    ch.send(1)
+
+let t1 = spawn worker()
+let t2 = spawn worker()
+ch.recv()
+ch.recv()
+t1.wait()
+t2.wait()
+
+assert(shared == 2, "mutex protected increment")
+
+if fail_count == 0:
+    打印("test_threads: all passed")
+else:
+    打印(f"test_threads: {fail_count} failed")

@@ -119,6 +119,7 @@ struct ObjFn {
     Env        *closure;
     bool        is_generator;
     bool        is_async;
+    void       *vm_chunk;  // ObjChunk* for VM (NULL when tree-walk only)
 };
 
 // ── 构造宏 ──────────────────────────────────────────────────

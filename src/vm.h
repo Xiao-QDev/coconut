@@ -60,8 +60,20 @@ int    chunk_add_const(Chunk *c, Value v);
 // Compiler: AST -> Chunk
 ObjChunk *compile(AstNode *prog);
 
+// VM call frame
+typedef struct {
+    ObjChunk *chunk;
+    uint8_t  *ip;
+    Value    *slots;   // pointer into vm->stack at frame base
+    int       slot_base;
+} CallFrame;
+
 // VM
 typedef struct {
+    // call frames
+    CallFrame  frames[64];
+    int        frame_count;
+    // legacy single-chunk fields (kept for compile() helper)
     ObjChunk  *chunk;
     uint8_t   *ip;
     Value      stack[256];

@@ -1,0 +1,26 @@
+let fail_count: int = 0
+
+fn assert(cond, msg):
+    if not cond:
+        打印(f"FAIL: {msg}")
+        fail_count = fail_count + 1
+
+let x: int = 42
+assert(x == 42, "int annotation")
+
+let s: str = "hello"
+assert(s == "hello", "str annotation")
+
+let b: bool = true
+assert(b == true, "bool annotation")
+
+let f: float = 3.14
+assert(f == 3.14, "float annotation")
+
+let items: list = [1, 2, 3]
+assert(items[0] == 1, "list annotation")
+
+if fail_count == 0:
+    打印("test_types: all passed")
+else:
+    打印(f"test_types: {fail_count} failed")

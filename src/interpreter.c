@@ -13,6 +13,11 @@
 
 #include "stdlib/qt_bind.h"
 
+// stdlib module constructors
+ObjMap *stdlib_str_module(void);
+ObjMap *stdlib_file_module(void);
+ObjMap *stdlib_maplib_module(void);
+
 static Interpreter *current_vm = NULL;
 
 void gc_mark_roots(void) {
@@ -725,6 +730,21 @@ void interp_register_stdlib(Interpreter *vm) {
     map_set(ui, str_intern("运行",     6),  VAL_NATIVE_V(qt_app_exec));
     env_set(vm->globals, str_intern("ui", 2),   VAL_MAP_V(ui));
     env_set(vm->globals, str_intern("界面", 6), VAL_MAP_V(ui));
+
+    // str module
+    ObjMap *str_mod = stdlib_str_module();
+    env_set(vm->globals, str_intern("str",    3), VAL_MAP_V(str_mod));
+    env_set(vm->globals, str_intern("字符串模块", 15), VAL_MAP_V(str_mod));
+
+    // file module
+    ObjMap *file_mod = stdlib_file_module();
+    env_set(vm->globals, str_intern("file", 4), VAL_MAP_V(file_mod));
+    env_set(vm->globals, str_intern("文件",  6), VAL_MAP_V(file_mod));
+
+    // maplib module
+    ObjMap *map_mod = stdlib_maplib_module();
+    env_set(vm->globals, str_intern("maplib",   6), VAL_MAP_V(map_mod));
+    env_set(vm->globals, str_intern("字典模块", 12), VAL_MAP_V(map_mod));
 }
 
 Value interp_run_string(const char *src, const char *filename) {
