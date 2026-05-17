@@ -33,4 +33,8 @@ Value qt_widget_set_title(int argc, Value *argv) { (void)argc;(void)argv; return
 Value qt_widget_add(int argc, Value *argv)    { (void)argc;(void)argv; return VAL_NIL_V; }
 Value qt_widget_on_click(int argc, Value *argv){ (void)argc;(void)argv; return VAL_NIL_V; }
 
+/* file module — filesystem not available in WASM */
+#include "value.h"
+ObjMap *stdlib_file_module(void) { return map_new(); }
+
 #endif /* __EMSCRIPTEN__ */
