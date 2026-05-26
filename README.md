@@ -83,6 +83,38 @@ examples/                示例代码
 tests/                   测试用例
 ```
 
+## SDK
+
+### 嵌入 SDK — 在 C 项目中运行 Pico
+
+```c
+#include "sdk/pico.h"
+
+PicoVM *vm = pico_new();
+pico_set_int(vm, "version", 1);
+pico_register(vm, "c_add", my_c_fn);
+pico_run_string(vm, "print(c_add(1, 2))");
+pico_free(vm);
+```
+
+### 扩展 SDK — 用 C 写 Pico 原生模块
+
+```c
+#include "sdk/pico_ext.h"
+
+PICO_MODULE(mymod) {
+    PICO_EXPORT("sqrt", my_sqrt);
+    PICO_EXPORT("pow",  my_pow);
+}
+```
+
+```bash
+# 编译嵌入示例
+gcc -std=c11 -Isdk -Isrc examples/sdk/embed_example.c sdk/pico.c src/*.c src/stdlib/*.c -lm -lpthread -o embed_example
+```
+
+完整示例见 [examples/sdk/](examples/sdk/)，API 文档见 [sdk/pico.h](sdk/pico.h) 和 [sdk/pico_ext.h](sdk/pico_ext.h)。
+
 ## 路线图
 
 - [x] MVP 解释器（词法、语法、求值）
