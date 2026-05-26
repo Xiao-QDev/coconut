@@ -32,9 +32,7 @@ void gc_collect(void) {
                 for (int i = 0; i < fn->arity; i++) free(fn->params[i]);
                 free(fn->params);
             } else if (unreached->type == OBJ_THREAD) {
-                ObjThread *t = (ObjThread*)unreached;
-                if (!t->done) pthread_detach(t->thread);
-                free(t->argv);
+                (void)unreached;
             } else if (unreached->type == OBJ_CORO) {
                 ObjCoro *coro = (ObjCoro*)unreached;
                 (void)coro;

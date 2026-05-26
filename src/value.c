@@ -255,8 +255,6 @@ void gc_mark_value(Value v) {
         if (v.fn->name) gc_mark_value(VAL_STR_V(v.fn->name));
         gc_mark_env(v.fn->closure);
     } else if (v.type == VAL_THREAD) {
-        gc_mark_value(VAL_FN_V(v.thread->fn));
-        for (int i = 0; i < v.thread->argc; i++) gc_mark_value(v.thread->argv[i]);
         gc_mark_value(v.thread->result);
     }
 }
